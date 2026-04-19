@@ -1,0 +1,41 @@
+version: "3.9"
+
+services:
+  # ── FastAPI Backend ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: docchat_backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - ./backend/.env          # reads ALL backend vars from the file
+    volumes:
+      - chroma_data:/app/chroma_store
+      - upload_data:/app/uploads
+    environment:
+      # Override only the vars that differ inside Docker networking
+      DATABASE_URL: sqlite:///./docchat.db
+      CHROMA_PERSIST_DIR: /app/chroma_store
+      UPLOAD_DIR: /app/uploads
+      ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:${FRONTEND_PORT:-5173}"
+
+  # ── React + Vite Frontend ────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: docchat_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    env_file:
+      - ./frontend/.env         # reads ALL frontend vars (VITE_ prefix)
+    depends_on:
+      - backend
+
+volumes:
+  chroma_data:
+  upload_data:
